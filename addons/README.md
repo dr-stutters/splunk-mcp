@@ -27,15 +27,20 @@ dashboards.
 
 ## Manifest — add-ons that match our lab sources
 
-| Add-on (Splunkbase) | Source | Sourcetype | Index | Status |
+| Add-on / App (Splunkbase) | Source | Sourcetype | Index | Status |
 |---|---|---|---|---|
+| **Cisco Security Cloud Control** (umbrella app) | ISE + Secure Firewall/FTD/ASA | via its bundled TAs (`cisco:ise`, `cisco:ftd`, `cisco:asa`) | `cisco` / `ise` | pending — prebuilt dashboards over the Cisco security sources |
 | Splunk Add-on for Cisco IOS | CML switches/routers (IOS/IOS-XE) | `cisco:ios` | `cisco` | live `cisco:ios` data flowing; add-on not yet installed |
 | Splunk Add-on for Cisco Identity Services Engine (ISE) | Cisco ISE (NAC) | `cisco:ise` | `ise` | pending |
 | Cisco Secure Firewall App/Add-on for Splunk | FTD / ASA | `cisco:ftd` / `cisco:asa` | `cisco` | pending |
 | Splunk Add-on for Microsoft Windows | Windows Server | `WinEventLog:*` | `windows` | pending |
 
-_(Skip "Cisco Security Cloud Control" — it targets Cisco's cloud SCC/CDO telemetry,
-which this lab doesn't emit.)_
+The **Cisco Security Cloud Control** app gives umbrella dashboards over the Cisco
+security telemetry (ISE, Secure Firewall) fed by its TAs **directly from on-prem
+syslog — the SCC/CDO cloud connector is optional, not required**. It may bundle or
+depend on the individual TAs above (Cisco ISE, Secure Firewall); install those
+first if it lists them as prerequisites. Exact sourcetypes/index each expects are
+confirmed from the package's `props.conf` / `inputs.conf` at install time.
 
 Record the exact version/build of each package you drop here in the Status column
 when you add it, so the install is reproducible.
