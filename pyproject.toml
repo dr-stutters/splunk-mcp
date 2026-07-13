@@ -1,0 +1,36 @@
+[project]
+name = "splunk-mcp"
+version = "0.1.0"
+description = "MCP server for the Splunk Enterprise REST API (management port 8089) + HTTP Event Collector"
+requires-python = ">=3.11"
+dependencies = [
+    "mcp>=1.2.0",
+    "httpx>=0.27.0",
+    "python-dotenv>=1.0.0",
+]
+
+[project.scripts]
+splunk-mcp = "splunk_mcp.server:main"
+
+[dependency-groups]
+dev = [
+    "pytest>=8.0",
+    "ruff>=0.15.21",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/splunk_mcp"]
+
+[tool.pytest.ini_options]
+# Only collect the Splunk-free unit tests (test_*.py). The live-Splunk suites are
+# named *_test.py (smoke_test.py) and are run directly.
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+filterwarnings = ["ignore::ResourceWarning"]
+
+[tool.ruff]
+line-length = 100

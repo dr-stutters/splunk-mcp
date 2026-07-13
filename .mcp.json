@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "splunk": {
+      "command": "uv",
+      "args": ["run", "splunk-mcp"]
+    }
+  }
+}
