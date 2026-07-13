@@ -54,18 +54,30 @@ SPLUNK_VERIFY_SSL=false                 # labs use self-signed certs
 # SPLUNK_HEC_TOKEN=00000000-0000-0000-0000-000000000000
 ```
 
-Run it (stdio transport by default):
+## How to use this
 
-```bash
-uv run splunk-mcp
-```
-
-Or register it in an MCP client's config:
+Run standalone (stdio): `uv run splunk-mcp` — or register it in any MCP client:
 
 ```json
 { "mcpServers": { "splunk": { "command": "uv",
     "args": ["run", "--directory", "/path/to/splunk-mcp", "splunk-mcp"] } } }
 ```
+
+It's built to be driven by an AI agent. In the
+[cml-mcp](https://github.com/dr-stutters/cml-mcp) lab suite it's wired in as the
+`splunk` server, owned by the **splunk-engineer** agent (tool prefix
+`mcp__splunk__*`) — it owns the receiving side (indexes, inputs, HEC, add-ons,
+verification searches) while the device agents configure log forwarding.
+Standalone, just describe what you want:
+
+> "Create a 'network' index and a UDP 514 syslog input feeding it."
+
+> "Enable HEC, mint a token for the firewall lab, and send a test event."
+
+> "Install this Cisco ISE add-on tarball and show me its dashboards."
+
+Call **`splunk_check`** first — it probes both the management API (8089) and
+HEC (8088) and reports what's reachable.
 
 ## Notes
 
@@ -80,10 +92,19 @@ Or register it in an MCP client's config:
 
 ## Test
 
-`tests/smoke_test.py` runs a live read-mostly pass (server info, health, indexes,
-apps, a one-shot search, endpoint discovery, and an index create→delete
-round-trip) against the box in `.env`:
-
 ```bash
-uv run python tests/smoke_test.py
+uv run pytest                         # unit tests - no Splunk needed (run in CI)
+uv run python tests/smoke_test.py     # live pass against the box in .env
 ```
+
+The unit tests mock the HTTP layer (form-encoded POSTs, Atom-entry unwrapping,
+the HEC `Authorization: Splunk` header). The smoke test runs a live read-mostly
+pass (server info, health, indexes, apps, a one-shot search, endpoint discovery,
+and an index create→delete round-trip).
+
+## Security notes
+
+`.env` is gitignored — never commit credentials or HEC tokens. Use a
+least-privilege role for routine search/ingest work. TLS verification is off by
+default for lab self-signed certs; set `SPLUNK_VERIFY_SSL=true` against a
+trusted CA.
