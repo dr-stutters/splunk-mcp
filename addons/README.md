@@ -25,22 +25,23 @@ dashboards.
    verify parsing: `splunk_search('index=<idx> sourcetype=<st> | head', ...)` and
    open the add-on's dashboards.
 
-## Manifest — add-ons that match our lab sources
+## Manifest — dropped packages + install status (as of 2026-07-13)
 
-| Add-on / App (Splunkbase) | Source | Sourcetype | Index | Status |
-|---|---|---|---|---|
-| **Cisco Security Cloud Control** (umbrella app) | ISE + Secure Firewall/FTD/ASA | via its bundled TAs (`cisco:ise`, `cisco:ftd`, `cisco:asa`) | `cisco` / `ise` | pending — prebuilt dashboards over the Cisco security sources |
-| Splunk Add-on for Cisco IOS | CML switches/routers (IOS/IOS-XE) | `cisco:ios` | `cisco` | live `cisco:ios` data flowing; add-on not yet installed |
-| Splunk Add-on for Cisco Identity Services Engine (ISE) | Cisco ISE (NAC) | `cisco:ise` | `ise` | pending |
-| Cisco Secure Firewall App/Add-on for Splunk | FTD / ASA | `cisco:ftd` / `cisco:asa` | `cisco` | pending |
-| Splunk Add-on for Microsoft Windows | Windows Server | `WinEventLog:*` | `windows` | pending |
+| Package (app id) | Ver | Role | Status |
+|---|---|---|---|
+| **Cisco Catalyst Add-on** (`TA_cisco_catalyst`) | 3.2.37 | Collects ISE/DNAC/SD-WAN via **OpenAPI Basic-auth** (or pxGrid) | ✅ **installed + working** — ISE account `ise35` (`https://198.18.134.35`, admin Basic-auth) validated; 4 inputs (SGTs, policy sets, authz profiles, nodes) → **`index=ise`, 28 events** (`cisco:ise:custom:*`). No ISE GUI/cert needed. |
+| **Cisco Enterprise Networking app** (`cisco-catalyst-app`) | 3.2.0 | Dashboards for the Catalyst Add-on data | ✅ installed — renders the ISE data (`cisco_ise_dashboard`) |
+| **Splunk Add-on for Cisco ISE** (`Splunk_TA_cisco-ise`) | 5.0.0 | Parses ISE **syslog** (`cisco:ise:syslog`) — live auth stream | ⏳ installed; `ise` index + UDP **5515** input ready. Needs the one **ISE GUI step** (Remote Logging Target → `198.18.128.51:5515`, map Passed/Failed/Accounting categories) for live auth events |
+| Cisco Secure Firewall (`ciscosecurefirewall`) | — | FTD/ASA dashboards (+ companion TA) | ⏸ deferred — SD-WAN firewall lab is stopped |
+| Cisco Security Cloud (`CiscoSecurityCloud`) | 3.6.7 | Umbrella; its own props target Secure Client **NVM**/**Endpoint** (`cisco:nvm:*`,`cisco:evm:*`) | ⏸ deferred — lab doesn't emit NVM/endpoint telemetry |
+| Cisco Catalyst Enhanced NetFlow (`splunk_app_stream_ipfix_cisco_hsl`) | 2.1.0 | NetFlow/IPFIX element mapping | ⏸ N/A — no NetFlow source |
+| ~~App for Cisco Network Data~~ (`cisco_ios`) | 2.8.0 | IOS syslog dashboards | ❌ removed — unmaintained (since 2024) + needs the equally-dated TA-cisco_ios for base extraction |
 
-The **Cisco Security Cloud Control** app gives umbrella dashboards over the Cisco
-security telemetry (ISE, Secure Firewall) fed by its TAs **directly from on-prem
-syslog — the SCC/CDO cloud connector is optional, not required**. It may bundle or
-depend on the individual TAs above (Cisco ISE, Secure Firewall); install those
-first if it lists them as prerequisites. Exact sourcetypes/index each expects are
-confirmed from the package's `props.conf` / `inputs.conf` at install time.
+**Two ISE→Splunk paths (complementary):** the **Catalyst Add-on** pulls ISE
+config/inventory over the OpenAPI (working now, no GUI); the **ISE syslog add-on**
+captures the live RADIUS auth stream (needs the ISE GUI remote-logging step). The
+lone cat9000v syslog (`cisco:ios`) has no maintained Cisco app, so it uses the
+custom **Cisco Syslog Overview** dashboard built via the Splunk MCP.
 
 Record the exact version/build of each package you drop here in the Status column
 when you add it, so the install is reproducible.
