@@ -37,6 +37,7 @@ _TOOL_MODULES = (
     "dashboards",
     "kvstore",
     "users",
+    "telemetry",
     "raw",
 )
 

@@ -15,7 +15,7 @@ Usable standalone against any Splunk box.
 
 Splunk's management API takes **form-encoded** parameters and returns Atom
 `entry[]` documents; this server adds `output_mode=json`, unwraps the entries to
-plain JSON, and wraps the common workflows as typed tools (45 of them):
+plain JSON, and wraps the common workflows as typed tools (47 of them):
 
 | Area | Tools |
 |---|---|
@@ -28,6 +28,7 @@ plain JSON, and wraps the common workflows as typed tools (45 of them):
 | **Dashboards** | `splunk_list_dashboards`, `splunk_get_dashboard`, `splunk_create_dashboard`, `splunk_delete_dashboard` |
 | **KV Store** | `splunk_list_kvstore_collections`, `splunk_kvstore_records` |
 | **Access control** | `splunk_list_users`, `splunk_list_roles`, `splunk_create_user`, `splunk_delete_user` |
+| **Telemetry gen** | `splunk_list_telemetry_profiles`, `splunk_generate_telemetry` |
 | **Escape hatch** | `splunk_rest_call` (any endpoint; pass `form_body`), `splunk_list_endpoints` |
 
 ## Install
@@ -78,6 +79,34 @@ Standalone, just describe what you want:
 
 Call **`splunk_check`** first — it probes both the management API (8089) and
 HEC (8088) and reports what's reachable.
+
+### Synthetic telemetry (demo/test data)
+
+`splunk_generate_telemetry` fabricates realistic events so the installed add-ons'
+dashboards populate without waiting for real devices. Five profiles, each mapped to
+the sourcetype/index its add-on parses:
+
+| profile | sourcetype → index | transports |
+|---|---|---|
+| `ios` | `cisco:ios` → `cisco` | HEC, UDP 5514 |
+| `ise_auth` | `cisco:ise:syslog` → `ise` | HEC, UDP 5515 |
+| `ise_acct` | `cisco:ise:syslog` → `ise` | HEC, UDP 5515 |
+| `asa` | `cisco:asa` → `cisco` | HEC only |
+| `windows` | `WinEventLog:Security` → `windows` | HEC only |
+
+```
+splunk_list_telemetry_profiles
+splunk_generate_telemetry(profile="ise_auth", count=300, span_minutes=120, token=<hec>)
+```
+
+- Events are **backfilled** with timestamps spread over the last `span_minutes`, so
+  time-range panels light up immediately. Pass `seed=` for byte-reproducible output.
+- Every synthetic host is prefixed **`sim-`** — filter it in/out with `host=sim-*`.
+- HEC transport (default) needs a token (`SPLUNK_HEC_TOKEN` or `token=`); if the
+  token is index-scoped, POST `index`+`indexes` to widen it before cross-index sends.
+- **Gotcha:** the target indexes (`cisco`/`ise`/`windows`) usually aren't in a role's
+  default search set, so a bare `host=sim-*` search finds nothing — scope with
+  `index=<name>` (the add-on dashboards already do this via their index macros).
 
 ## Notes
 

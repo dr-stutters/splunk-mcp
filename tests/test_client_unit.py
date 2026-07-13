@@ -186,3 +186,130 @@ def test_transient_transport_error_is_retried():
 
     run(_client(handler, retries=2).get("/services/server/info"))
     assert calls["n"] == 2
+
+
+# --------------------------------------------------------------------------
+# telemetry generator (#23) - pure core + HEC/UDP transports
+# --------------------------------------------------------------------------
+import json  # noqa: E402
+import socket as _socket  # noqa: E402
+
+from mcp.server.fastmcp import FastMCP  # noqa: E402
+
+from splunk_mcp.tools import telemetry as tele  # noqa: E402
+
+_FIXED_NOW = 1_700_000_000.0
+
+
+def _tele_mcp(handler, **kw) -> FastMCP:
+    m = FastMCP("t")
+    tele.register(m, _client(handler, **kw))
+    return m
+
+
+async def _call(mcp, name, **args):
+    res = await mcp.call_tool(name, args)
+    return res[1]["result"] if isinstance(res, tuple) else res
+
+
+def test_telemetry_deterministic_and_windowed():
+    a = tele._generate("ios", 20, 60, seed=42, now=_FIXED_NOW)
+    b = tele._generate("ios", 20, 60, seed=42, now=_FIXED_NOW)
+    assert a == b  # same seed -> byte-identical
+    assert tele._generate("ios", 20, 60, seed=43, now=_FIXED_NOW) != a
+    ts = [t for t, _h, _x in a]
+    assert ts == sorted(ts)  # oldest -> newest
+    assert ts[0] >= _FIXED_NOW - 3600 and ts[-1] <= _FIXED_NOW  # inside the span
+
+
+def test_telemetry_every_profile_shape():
+    for prof in ("ios", "ise_auth", "ise_acct", "asa", "windows"):
+        evs = tele._generate(prof, 15, 30, seed=1, now=_FIXED_NOW)
+        assert len(evs) == 15
+        assert all(h.startswith("sim-") for _t, h, _x in evs)
+    assert "CISE_" in tele._generate("ise_auth", 5, 30, seed=1)[0][2]
+    assert "UserName=" in tele._generate("ise_auth", 5, 30, seed=1)[0][2]
+    assert "CISE_RADIUS_Accounting" in tele._generate("ise_acct", 5, 30, seed=1)[0][2]
+    assert "EventCode=" in tele._generate("windows", 5, 30, seed=1)[0][2]
+    assert "%ASA-" in tele._generate("asa", 5, 30, seed=1)[0][2]
+
+
+def test_telemetry_unknown_profile_raises():
+    with pytest.raises(ValueError):
+        tele._generate("nope", 5, 30, seed=1)
+
+
+def test_telemetry_hec_envelopes_and_token():
+    seen = {}
+
+    def handler(req):
+        if req.url.host == "splunk.example.com" and req.url.port == 8088:
+            seen["auth"] = req.headers.get("authorization")
+            seen["body"] = req.content.decode()
+            return httpx.Response(200, json={"text": "Success", "code": 0})
+        return httpx.Response(404)
+
+    out = run(_call(_tele_mcp(handler),
+                    "splunk_generate_telemetry", profile="ios", count=3,
+                    span_minutes=10, seed=7, token="tok-xyz"))
+    assert seen["auth"] == "Splunk tok-xyz"  # NOT Basic
+    lines = [json.loads(x) for x in seen["body"].splitlines()]
+    assert len(lines) == 3
+    for env in lines:
+        assert env["index"] == "cisco" and env["sourcetype"] == "cisco:ios"
+        assert env["host"].startswith("sim-") and "time" in env
+    assert '"sent": 3' in out and '"transport": "hec"' in out
+
+
+def test_telemetry_hec_index_override_and_batching():
+    posts = {"n": 0, "events": 0}
+
+    def handler(req):
+        if req.url.port == 8088:
+            posts["n"] += 1
+            posts["events"] += len(req.content.decode().splitlines())
+            return httpx.Response(200, json={"text": "Success", "code": 0})
+        return httpx.Response(404)
+
+    run(_call(_tele_mcp(handler), "splunk_generate_telemetry",
+              profile="ise_auth", count=1100, span_minutes=60, seed=1))
+    assert posts["events"] == 1100 and posts["n"] == 3  # 500+500+100 batches
+
+
+def test_telemetry_asa_udp_rejected():
+    # asa has no UDP input -> must error toward HEC
+    import asyncio as _a
+    with pytest.raises(Exception):  # noqa: B017 - MCP wraps ValueError
+        _a.run(_tele_mcp(lambda _r: httpx.Response(200)).call_tool(
+            "splunk_generate_telemetry",
+            {"profile": "asa", "count": 5, "transport": "udp"}))
+
+
+def test_telemetry_udp_sends_packets(monkeypatch):
+    srv = _socket.socket(_socket.AF_INET, _socket.SOCK_DGRAM)
+    srv.bind(("127.0.0.1", 0))
+    srv.settimeout(1.0)
+    port = srv.getsockname()[1]
+    # base_url host is splunk.example.com; force target to loopback for the test
+    monkeypatch.setattr(tele.socket, "socket", _socket.socket)
+
+    def handler(_r):
+        return httpx.Response(200)
+
+    c = _client(handler)
+    monkeypatch.setattr(c, "base_url", "https://127.0.0.1:8089", raising=False)
+    m = FastMCP("t")
+    tele.register(m, c)
+    run(m.call_tool("splunk_generate_telemetry",
+                    {"profile": "ios", "count": 5, "transport": "udp",
+                     "udp_port": port, "seed": 3}))
+    got = 0
+    try:
+        while True:
+            srv.recvfrom(65535)
+            got += 1
+    except _socket.timeout:
+        pass
+    finally:
+        srv.close()
+    assert got == 5
