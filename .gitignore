@@ -6,3 +6,11 @@ dist/
 build/
 *.egg-info/
 .ruff_cache/
+
+# Splunkbase add-on packages: licensed, not redistributable - keep local only.
+# (The addons/ manifest README is committed; the packages are not.)
+addons/*.tgz
+addons/*.spl
+addons/*.tar.gz
+addons/*.zip
+
