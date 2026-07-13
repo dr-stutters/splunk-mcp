@@ -43,5 +43,14 @@ captures the live RADIUS auth stream (needs the ISE GUI remote-logging step). Th
 lone cat9000v syslog (`cisco:ios`) has no maintained Cisco app, so it uses the
 custom **Cisco Syslog Overview** dashboard built via the Splunk MCP.
 
+**Gotcha — the ISE dashboards filter on an index macro.** The Enterprise
+Networking / ISE add-on dashboards scope every panel to `index IN
+\`Cisco_ISE_Index\``, a macro shipped as `("default","netauth")` (the add-on's
+expected index names). Our data lands in `index=ise`, so the panels showed **"No
+results" even though the events were indexed**. Fix once per install: add your
+index to the macro — `POST /servicesNS/nobody/Splunk_TA_cisco-ise/data/macros/
+Cisco_ISE_Index definition=("default","netauth","ise")` (or point the UDP input at
+a `netauth` index instead). Global macro, so it fixes every ISE dashboard at once.
+
 Record the exact version/build of each package you drop here in the Status column
 when you add it, so the install is reproducible.
