@@ -77,6 +77,9 @@ Standalone, just describe what you want:
 
 > "Install this Cisco ISE add-on tarball and show me its dashboards."
 
+See **[EXAMPLE_PROMPT.md](EXAMPLE_PROMPT.md)** for a full end-to-end scenario plus
+focused per-area prompts (indexes, syslog/HEC ingest, SPL, telemetry gen, add-ons).
+
 Call **`splunk_check`** first — it probes both the management API (8089) and
 HEC (8088) and reports what's reachable.
 
