@@ -45,6 +45,8 @@ uv sync
 
 Copy `.env.example` to `.env` and fill in your Splunk box:
 
+> **Suite users:** these values can instead live in a shared `../.env` one level above the repos, read by every companion MCP — precedence: process env > this repo's `.env` > the shared `../.env`. See the [cml-mcp](https://github.com/dr-stutters/cml-mcp) hub.
+
 ```ini
 SPLUNK_URL=https://192.0.2.51:8089      # mgmt/REST API; :8089 assumed if omitted
 SPLUNK_USERNAME=admin
