@@ -41,7 +41,11 @@ def load_settings() -> Settings:
     parent project like cml-mcp via `uv run --directory`).
     """
     load_dotenv(Path(__file__).resolve().parents[2] / ".env")
-    load_dotenv()
+    load_dotenv()  # also honor .env in the current working directory
+    # shared secrets base for the whole MCP suite (../.env, one level above the
+    # repos) - lowest precedence: process env > this repo's .env > shared. Skipped
+    # silently if absent, so standalone clones are unaffected.
+    load_dotenv(Path(__file__).resolve().parents[3] / ".env")
 
     host = os.environ.get("SPLUNK_URL") or os.environ.get("SPLUNK_HOST", "")
     if not host:
