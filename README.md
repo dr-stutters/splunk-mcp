@@ -6,10 +6,32 @@ token auth) as tools. Built with FastMCP + async httpx.
 
 It's a companion to [cml-mcp](https://github.com/dr-stutters/cml-mcp) (and the
 [Firepower](https://github.com/dr-stutters/firepower-mcp),
-[ISE](https://github.com/dr-stutters/ise-mcp), and
-[Windows](https://github.com/dr-stutters/windows-mcp) MCPs): Splunk is the
+[ISE](https://github.com/dr-stutters/ise-mcp),
+[Windows](https://github.com/dr-stutters/windows-mcp),
+[WLC](https://github.com/dr-stutters/wlc-mcp) and
+[Catalyst Center](https://github.com/dr-stutters/catalyst-center-mcp) MCPs): Splunk is the
 observability/SIEM sink that the Cisco/Windows lab stacks forward telemetry to.
 Usable standalone against any Splunk box.
+
+## In the suite — what feeds Splunk
+
+Splunk is the **downstream sink**: this server owns the *receiving* side (indexes, syslog
+UDP/TCP inputs, HEC tokens, add-ons + dashboards, SPL); each device agent configures its own
+forwarding. Feeds built and validated in the [cml-mcp](https://github.com/dr-stutters/cml-mcp)
+suite (see the [suite integration map](https://github.com/dr-stutters/cml-mcp#suite-integration-map)):
+
+- **FTD / FMC → Splunk** ([firepower-mcp](https://github.com/dr-stutters/firepower-mcp)) —
+  LINA syslog (UDP 514) → firewall connection + IPS events (live-proven: `%FTD-6-305011`
+  build events for real fabric-host traffic).
+- **ISE → Splunk** ([ise-mcp](https://github.com/dr-stutters/ise-mcp)) — RADIUS/TACACS+
+  auth logs via the **Cisco ISE** Splunkbase add-on.
+- **Windows → Splunk** ([windows-mcp](https://github.com/dr-stutters/windows-mcp)) — AD /
+  security events via the **Splunk Add-on for Microsoft Windows**.
+- **WLC → Splunk** ([wlc-mcp](https://github.com/dr-stutters/wlc-mcp)) — C9800 syslog/telemetry.
+- **No live devices?** `splunk_generate_telemetry` fabricates realistic ios / ise_auth /
+  ise_acct / asa / windows events (host prefix `sim-`) so the add-on dashboards populate.
+- Prefer installing existing **Splunkbase add-ons** (Cisco Security Cloud, Cisco ISE, MS
+  Windows) and their prebuilt dashboards over hand-built panels.
 
 ## What it does
 
